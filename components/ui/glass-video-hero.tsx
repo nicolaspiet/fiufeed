@@ -4,16 +4,25 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Maximize2, Minimize2, Radio, Trophy, Users } from 'lucide-react'
 
-export function HeroSection() {
+type HeroSectionProps = {
+  isLoggedIn?: boolean
+}
+
+export function HeroSection({ isLoggedIn = false }: HeroSectionProps) {
   const [fullBleed, setFullBleed] = useState(true)
 
   const videoUrl =
     'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260210_031346_d87182fb-b0af-4273-84d1-c6fd17d6bf0f.mp4'
+  const primaryHref = isLoggedIn ? '/feed' : '/cadastro'
+  const secondaryHref = isLoggedIn ? '/competicoes' : '/entrar'
+  const primaryLabel = isLoggedIn ? 'Ir para o feed' : 'Criar conta grátis'
+  const secondaryLabel = isLoggedIn ? 'Ver competições' : 'Entrar'
 
   return (
     <section
-      className={`relative w-full overflow-hidden bg-[#03130d] text-white transition-all duration-500 ease-in-out ${fullBleed ? 'min-h-[100svh]' : 'py-8'
-        }`}
+      className={`relative w-full overflow-hidden bg-[#03130d] text-white transition-all duration-500 ease-in-out ${
+        fullBleed ? 'min-h-[100svh]' : 'py-8'
+      }`}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1f9f6b_0%,rgba(3,19,13,0.78)_38%,#03130d_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,22,15,0.12)_0%,rgba(4,22,15,0.62)_48%,rgba(3,19,13,0.96)_100%)]" />
@@ -42,16 +51,16 @@ export function HeroSection() {
 
           <div className="hidden items-center gap-2 sm:flex">
             <Link
-              href="/entrar"
+              href={isLoggedIn ? '/feed' : '/entrar'}
               className="rounded-full px-4 py-2 text-sm font-medium text-white/88 transition hover:bg-white/10"
             >
-              Entrar
+              {isLoggedIn ? 'Feed' : 'Entrar'}
             </Link>
             <Link
-              href="/cadastro"
+              href={primaryHref}
               className="rounded-full bg-[#4ade80] px-4 py-2 text-sm font-semibold text-[#062416] shadow-[0_12px_36px_rgba(74,222,128,0.22)] transition hover:brightness-110"
             >
-              Criar conta
+              {isLoggedIn ? 'Abrir app' : 'Criar conta'}
             </Link>
           </div>
         </div>
@@ -76,16 +85,16 @@ export function HeroSection() {
 
             <div className="mt-7 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
               <Link
-                href="/cadastro"
+                href={primaryHref}
                 className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#4ade80] px-6 text-base font-semibold text-[#062416] shadow-[0_16px_50px_rgba(74,222,128,0.24)] transition hover:-translate-y-0.5 hover:brightness-105"
               >
-                Criar conta grátis
+                {primaryLabel}
               </Link>
               <Link
-                href="/entrar"
+                href={secondaryHref}
                 className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-white/10 px-6 text-base font-medium text-white backdrop-blur-xl transition hover:bg-white/14"
               >
-                Entrar
+                {secondaryLabel}
               </Link>
             </div>
 
@@ -123,7 +132,7 @@ export function HeroSection() {
                 <div className="mt-5 rounded-[1.6rem] bg-white/5 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-left">
-                      <p className="text-sm font-medium text-white">Post de assobios </p>
+                      <p className="text-sm font-medium text-white">Post de assobios</p>
                       <p className="text-xs text-[#a8bdb3]">0:18 de duração · publicado agora</p>
                     </div>
                     <span className="text-xs font-medium text-[#9af2ca]">Feed principal</span>
@@ -154,16 +163,16 @@ export function HeroSection() {
 
         <div className="mx-auto mt-5 flex w-full max-w-md gap-3 sm:hidden">
           <Link
-            href="/entrar"
+            href={secondaryHref}
             className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-white/10 px-4 text-sm font-medium text-white backdrop-blur-xl"
           >
-            Entrar
+            {secondaryLabel}
           </Link>
           <Link
-            href="/cadastro"
+            href={primaryHref}
             className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#4ade80] px-4 text-sm font-semibold text-[#062416]"
           >
-            Criar conta
+            {isLoggedIn ? 'Abrir app' : 'Criar conta'}
           </Link>
         </div>
       </div>
