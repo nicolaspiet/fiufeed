@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider'
 
 export const metadata: Metadata = {
   title: 'Fiufeed',
-  description: 'Fiufeed, a rede social brasileira para posts em áudio',
+  description: 'Fiufeed, a rede social brasileira para posts de assobios',
 }
 
 export const viewport: Viewport = {
