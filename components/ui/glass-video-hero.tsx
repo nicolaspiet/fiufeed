@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Maximize2, Minimize2, Radio, Trophy, Users, Bird } from 'lucide-react'
+import { Bird, Code2, Maximize2, Minimize2, Radio, Trophy, Users } from 'lucide-react'
 
 type HeroSectionProps = {
   isLoggedIn?: boolean
@@ -173,6 +173,18 @@ export function HeroSection({ isLoggedIn = false }: HeroSectionProps) {
           >
             {isLoggedIn ? 'Abrir app' : 'Criar conta'}
           </Link>
+        </div>
+
+        <div className="mx-auto mt-5 flex w-full max-w-6xl justify-center sm:justify-end">
+          <a
+            href="https://github.com/nicolaspiet/fiufeed"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full bg-white/8 px-3 py-2 text-xs font-medium text-white/72 backdrop-blur-xl transition hover:bg-white/12 hover:text-white"
+          >
+            <Code2 size={14} />
+            <span>GitHub</span>
+          </a>
         </div>
       </div>
     </section>

@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Mic } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { WhistleRecorderSheet, type CreatedWhistle } from '@/components/audio/WhistleRecorderSheet'
+import { WhistleRecorderSheet } from '@/components/audio/WhistleRecorderSheet'
 
 interface SubmitEntryButtonProps {
   competitionId: string
@@ -19,26 +18,10 @@ export function SubmitEntryButton({
   competitionGroupId,
   userId,
 }: SubmitEntryButtonProps) {
-  const supabase = createClient()
   const router = useRouter()
   const [showRecorder, setShowRecorder] = useState(false)
-  const [entryError, setEntryError] = useState('')
 
-  async function handlePosted(whistle: CreatedWhistle) {
-    const { error } = await supabase.from('competition_entries').insert({
-      competition_id: competitionId,
-      user_id: userId,
-      whistle_id: whistle.id,
-    })
-
-    if (error) {
-      setEntryError(`Seu post foi publicado, mas não entrou na competição: ${error.message}`)
-      setShowRecorder(false)
-      router.refresh()
-      return
-    }
-
-    setEntryError('')
+  async function handlePosted() {
     setShowRecorder(false)
     router.refresh()
   }
@@ -52,14 +35,12 @@ export function SubmitEntryButton({
         <Mic size={18} />
         Participar com meu post
       </button>
-      {entryError && (
-        <p className="mt-3 text-sm text-amber-400">{entryError}</p>
-      )}
       {showRecorder && (
         <WhistleRecorderSheet
           userId={userId}
           groupId={competitionGroupId ?? undefined}
-          destinationLabel={`Competição: ${competitionTitle}`}
+          competitionId={competitionId}
+          destinationLabel={`Competicao: ${competitionTitle}`}
           onClose={() => setShowRecorder(false)}
           onPosted={handlePosted}
         />

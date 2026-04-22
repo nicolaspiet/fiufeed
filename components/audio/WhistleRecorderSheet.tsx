@@ -19,12 +19,20 @@ export interface CreatedWhistle {
 interface WhistleRecorderSheetProps {
   userId: string
   groupId?: string
+  competitionId?: string
   destinationLabel?: string
   onClose: () => void
   onPosted: (whistle: CreatedWhistle) => void | Promise<void>
 }
 
-export function WhistleRecorderSheet({ userId, groupId, destinationLabel, onClose, onPosted }: WhistleRecorderSheetProps) {
+export function WhistleRecorderSheet({
+  userId,
+  groupId,
+  competitionId,
+  destinationLabel,
+  onClose,
+  onPosted,
+}: WhistleRecorderSheetProps) {
   const supabase = createClient()
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -93,7 +101,7 @@ export function WhistleRecorderSheet({ userId, groupId, destinationLabel, onClos
         })
       }, 1000)
     } catch {
-      setMicError('Acesso ao microfone negado. Verifique as permissões do navegador.')
+      setMicError('Acesso ao microfone negado. Verifique as permissoes do navegador.')
     }
   }
 
@@ -120,16 +128,38 @@ export function WhistleRecorderSheet({ userId, groupId, destinationLabel, onClos
     setPosting(true)
     setError('')
 
+    let uploadedPath: string | null = null
+    let submissionCommitted = false
+
     try {
-      const whistleId = crypto.randomUUID()
-      const publicId = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
       const path = getAudioStoragePath(userId, 'whistle.webm')
       const { error: uploadError } = await supabase.storage
         .from('audio-whistles')
         .upload(path, audioBlob, { contentType: audioBlob.type, upsert: false })
 
       if (uploadError) throw uploadError
+      uploadedPath = path
 
+      if (competitionId) {
+        const { data, error: submitError } = await supabase
+          .rpc('create_competition_entry_with_whistle', {
+            p_competition_id: competitionId,
+            p_audio_url: path,
+            p_duration_s: elapsed,
+            p_caption: caption.trim(),
+            p_group_id: groupId ?? null,
+          })
+          .single()
+
+        if (submitError) throw submitError
+
+        submissionCommitted = true
+        await onPosted(data)
+        return
+      }
+
+      const whistleId = crypto.randomUUID()
+      const publicId = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
       const createdWhistle = {
         id: whistleId,
         audio_url: path,
@@ -150,17 +180,32 @@ export function WhistleRecorderSheet({ userId, groupId, destinationLabel, onClos
 
       if (insertError) throw insertError
 
+      submissionCommitted = true
       await onPosted(createdWhistle)
     } catch (caughtError: unknown) {
+      if (uploadedPath && !submissionCommitted) {
+        await supabase.storage.from('audio-whistles').remove([uploadedPath])
+      }
+
       const errorMessage = caughtError instanceof Error ? caughtError.message : 'Erro ao publicar. Tente novamente.'
       const normalizedMessage = errorMessage.toLowerCase()
 
-      if (
+      if (normalizedMessage.includes('already has an entry')) {
+        setError('Voce ja tem um envio nessa competicao.')
+      } else if (
+        normalizedMessage.includes('submission window is closed')
+        || normalizedMessage.includes('competition not found')
+        || normalizedMessage.includes('not visible')
+      ) {
+        setError('Nao foi possivel entrar na competicao com esse post.')
+      } else if (normalizedMessage.includes('scope must match competition scope')) {
+        setError('Esse post nao pode ser usado nessa competicao por causa do escopo do grupo.')
+      } else if (
         normalizedMessage.includes('404')
         || normalizedMessage.includes('not found')
         || normalizedMessage.includes('bucket')
       ) {
-        setError('Falha ao enviar o áudio. O bucket "audio-whistles" não foi encontrado ou não está configurado no Supabase.')
+        setError('Falha ao enviar o audio. O bucket "audio-whistles" nao foi encontrado ou nao esta configurado no Supabase.')
       } else {
         setError(errorMessage)
       }
