@@ -50,7 +50,7 @@ export default async function PerfilPage({ params }: PageProps) {
       .limit(30),
     supabase
       .from('reposts')
-      .select('id, user_id, original_whistle_id, group_id, created_at, profiles!reposts_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id), whistles!reposts_original_whistle_id_fkey(id, user_id, audio_url, duration_s, caption, likes_count, comments_count, group_id, created_at, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id))')
+      .select('id, user_id, original_whistle_id, group_id, created_at, profiles!reposts_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id), whistles!reposts_original_whistle_id_fkey(id, public_id, user_id, audio_url, duration_s, caption, likes_count, comments_count, group_id, created_at, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id))')
       .eq('user_id', profile.id)
       .is('group_id', null)
       .order('created_at', { ascending: false })

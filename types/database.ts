@@ -60,6 +60,7 @@ export interface Database {
       whistles: {
         Row: {
           id: string
+          public_id: string
           user_id: string
           audio_url: string
           duration_s: number
@@ -71,6 +72,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: string
           user_id: string
           audio_url: string
           duration_s: number
@@ -197,6 +199,7 @@ export interface Database {
       groups: {
         Row: {
           id: string
+          slug: string
           name: string
           description: string
           avatar_url: string | null
@@ -207,6 +210,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          slug?: string
           name: string
           description?: string
           avatar_url?: string | null
@@ -245,6 +249,8 @@ export interface Database {
       competitions: {
         Row: {
           id: string
+          public_id: string
+          slug: string
           title: string
           theme: string
           description: string
@@ -257,6 +263,8 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: string
+          slug?: string
           title: string
           theme: string
           description?: string
@@ -394,6 +402,7 @@ export interface Database {
           item_type: 'whistle' | 'repost'
           item_id: string
           original_whistle_id: string
+          original_public_id: string
           actor_user_id: string
           audio_url: string
           duration_s: number
@@ -440,7 +449,7 @@ export type Repost = Database['public']['Tables']['reposts']['Row']
 export type UserBadge = Database['public']['Tables']['user_badges']['Row']
 export type UserTitle = Database['public']['Tables']['user_titles']['Row']
 export type WhistleWithProfile = Whistle & {
-  profiles: Pick<Profile, 'username' | 'display_name' | 'avatar_url' | 'equipped_badge_id' | 'equipped_title_id'>
+  profiles: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'equipped_badge_id' | 'equipped_title_id'>
 }
 export type FeedItem = Database['public']['Functions']['get_feed']['Returns'][number]
 export type Group = Database['public']['Tables']['groups']['Row']

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Lock, Plus, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { buildGroupPath } from '@/lib/routes'
 
 export default async function GruposPage() {
   const supabase = await createClient()
@@ -44,7 +45,7 @@ export default async function GruposPage() {
           {(groups ?? []).map((group) => (
             <Link
               key={group.id}
-              href={`/grupos/${group.id}`}
+              href={buildGroupPath(group)}
               className="flex items-center gap-3 border-b px-4 py-3 transition-colors hover:bg-[var(--hover-bg)]"
               style={{ borderColor: 'var(--border)' }}
             >
@@ -77,7 +78,7 @@ export default async function GruposPage() {
           (publicGroups ?? []).map((group) => (
             <Link
               key={group.id}
-              href={`/grupos/${group.id}`}
+              href={buildGroupPath(group)}
               className="flex items-center gap-3 border-b px-4 py-3 transition-colors hover:bg-[var(--hover-bg)]"
               style={{ borderColor: 'var(--border)' }}
             >

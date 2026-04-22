@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { buildGroupPath } from '@/lib/routes'
 
 export default function NovoGrupoPage() {
   const router = useRouter()
@@ -33,7 +34,7 @@ export default function NovoGrupoPage() {
       setLoading(false)
       return
     }
-    router.push(`/grupos/${data.id}`)
+    router.push(buildGroupPath(data))
   }
 
   return (

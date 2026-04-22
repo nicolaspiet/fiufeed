@@ -6,6 +6,7 @@ import { WhistleCard } from '@/components/feed/WhistleCard'
 import { createSignedAudioUrl } from '@/lib/audio-url'
 import { toFeedItemFromWhistle } from '@/lib/feed'
 import { getEquippedDecorations } from '@/lib/profile-decorations'
+import { buildCompetitionPath, buildWhistlePath, isUuid } from '@/lib/routes'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -24,32 +25,49 @@ function timeAgo(dateStr: string): string {
 }
 
 export default async function AssobioPage({ params }: PageProps) {
-  const { id } = await params
+  const { id: segment } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: whistle } = await supabase
+  const whistleQuery = supabase
     .from('whistles')
     .select('*, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id)')
-    .eq('id', id)
-    .single()
+
+  const { data: whistle } = isUuid(segment)
+    ? await whistleQuery.eq('id', segment).single()
+    : await whistleQuery.eq('public_id', segment).single()
 
   if (!whistle) notFound()
+
+  const canonicalPath = buildWhistlePath(whistle)
+  if (canonicalPath !== `/assobio/${segment}`) {
+    redirect(canonicalPath)
+  }
+
+  const whistleId = whistle.id
 
   const { data: competitionEntry } = await supabase
     .from('competition_entries')
     .select('competition_id')
-    .eq('whistle_id', id)
+    .eq('whistle_id', whistleId)
     .maybeSingle()
 
   if (competitionEntry?.competition_id) {
-    redirect(`/competicoes/${competitionEntry.competition_id}`)
+    const { data: linkedCompetition } = await supabase
+      .from('competitions')
+      .select('id, public_id, slug, title')
+      .eq('id', competitionEntry.competition_id)
+      .single()
+
+    if (linkedCompetition) {
+      redirect(buildCompetitionPath(linkedCompetition))
+    }
   }
 
   const { data: comments } = await supabase
     .from('comments')
     .select('id, content, created_at, user_id')
-    .eq('whistle_id', id)
+    .eq('whistle_id', whistleId)
     .order('created_at', { ascending: true })
 
   const commentUserIds = Array.from(new Set((comments ?? []).map((comment) => comment.user_id)))
@@ -61,10 +79,10 @@ export default async function AssobioPage({ params }: PageProps) {
   const decorationMap = await getEquippedDecorations(supabase, [whistle.profiles])
 
   const { data: likedRow } = user
-    ? await supabase.from('likes').select('whistle_id').match({ user_id: user.id, whistle_id: id }).maybeSingle()
+    ? await supabase.from('likes').select('whistle_id').match({ user_id: user.id, whistle_id: whistleId }).maybeSingle()
     : { data: null }
   const { data: repostRow } = user
-    ? await supabase.from('reposts').select('id').match({ user_id: user.id, original_whistle_id: id }).maybeSingle()
+    ? await supabase.from('reposts').select('id').match({ user_id: user.id, original_whistle_id: whistleId }).maybeSingle()
     : { data: null }
 
   const feedItem = toFeedItemFromWhistle({
@@ -97,7 +115,7 @@ export default async function AssobioPage({ params }: PageProps) {
       />
 
       <div className="border-b px-4 py-4" style={{ borderColor: 'var(--border)' }}>
-        <CommentForm whistleId={id} currentUserId={user?.id ?? null} />
+        <CommentForm whistleId={whistleId} currentUserId={user?.id ?? null} />
       </div>
 
       <section>

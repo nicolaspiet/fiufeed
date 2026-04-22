@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { buildCompetitionPath } from '@/lib/routes'
 
 export default function NovaCompeticaoPage() {
   const router = useRouter()
@@ -124,7 +125,7 @@ export default function NovaCompeticaoPage() {
         group_id: groupId === 'public' ? null : groupId,
         created_by: user.id,
       })
-      .select('id')
+      .select('id, public_id, slug, title')
       .single()
 
     if (insertError) {
@@ -133,7 +134,7 @@ export default function NovaCompeticaoPage() {
       return
     }
 
-    router.push(`/competicoes/${data.id}`)
+    router.push(buildCompetitionPath(data))
   }
 
   if (!booting && !canHost) {

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { WhistlePlayer } from '@/components/audio/WhistlePlayer'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { formatDuration } from '@/lib/utils/audio'
+import { buildWhistlePath } from '@/lib/routes'
 import type { FeedItem } from '@/types/database'
 
 interface WhistleCardProps {
@@ -152,7 +153,7 @@ export function WhistleCard({
   }
 
   async function handleShare() {
-    const shareUrl = `${location.origin}/assobio/${whistle.original_whistle_id}`
+    const shareUrl = `${location.origin}${buildWhistlePath({ public_id: whistle.original_public_id, id: whistle.original_whistle_id })}`
 
     if (navigator.share) {
       await navigator.share({ title: `Post de @${whistle.original_username}`, url: shareUrl })
@@ -164,7 +165,7 @@ export function WhistleCard({
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(`${location.origin}/assobio/${whistle.original_whistle_id}`)
+      await navigator.clipboard.writeText(`${location.origin}${buildWhistlePath({ public_id: whistle.original_public_id, id: whistle.original_whistle_id })}`)
       setActionError('')
     } catch {
       setActionError('Não foi possível copiar o link agora.')
@@ -364,7 +365,7 @@ export function WhistleCard({
               <span>{likesCount > 0 ? likesCount : ''}</span>
             </button>
 
-            <Link href={`/assobio/${whistle.original_whistle_id}`} className="flex items-center gap-1.5 text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>
+            <Link href={buildWhistlePath({ public_id: whistle.original_public_id, id: whistle.original_whistle_id })} className="flex items-center gap-1.5 text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>
               <MessageCircle size={17} />
               <span>{whistle.comments_count > 0 ? whistle.comments_count : ''}</span>
             </Link>

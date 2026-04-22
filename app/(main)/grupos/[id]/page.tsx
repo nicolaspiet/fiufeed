@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { WhistleCard } from '@/components/feed/WhistleCard'
 import { GroupHeader } from '@/components/groups/GroupHeader'
@@ -7,25 +7,36 @@ import { createSignedAudioUrl } from '@/lib/audio-url'
 import { sortFeedItems, toFeedItemFromRepost, toFeedItemFromWhistle } from '@/lib/feed'
 import { getEquippedDecorations } from '@/lib/profile-decorations'
 import { filterOutCompetitionReposts, filterOutCompetitionWhistles, getCompetitionWhistleIds } from '@/lib/competition'
+import { buildGroupPath, isUuid } from '@/lib/routes'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 export default async function GrupoPage({ params }: PageProps) {
-  const { id } = await params
+  const { id: segment } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: group } = await supabase.from('groups').select('*').eq('id', id).single()
+  const groupQuery = supabase.from('groups').select('*')
+  const { data: group } = isUuid(segment)
+    ? await groupQuery.eq('id', segment).single()
+    : await groupQuery.eq('slug', segment).single()
   if (!group) notFound()
+
+  const canonicalPath = buildGroupPath(group)
+  if (canonicalPath !== `/grupos/${segment}`) {
+    redirect(canonicalPath)
+  }
+
+  const groupId = group.id
 
   let isMember = false
   let memberRole: 'owner' | 'admin' | 'member' | null = null
   if (user) {
     const { data } = await supabase.from('group_members')
       .select('role')
-      .match({ group_id: id, user_id: user.id })
+      .match({ group_id: groupId, user_id: user.id })
       .maybeSingle()
     isMember = !!data
     memberRole = (data?.role as 'owner' | 'admin' | 'member' | undefined) ?? null
@@ -41,7 +52,7 @@ export default async function GrupoPage({ params }: PageProps) {
     )
   }
 
-  const { data: members } = await supabase.from('group_members').select('user_id, role').eq('group_id', id)
+  const { data: members } = await supabase.from('group_members').select('user_id, role').eq('group_id', groupId)
   const memberUserIds = Array.from(new Set((members ?? []).map((member) => member.user_id)))
   const { data: memberProfiles } = memberUserIds.length > 0
     ? await supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', memberUserIds)
@@ -74,13 +85,13 @@ export default async function GrupoPage({ params }: PageProps) {
     supabase
       .from('whistles')
       .select('*, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id)')
-      .eq('group_id', id)
+      .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(30),
     supabase
       .from('reposts')
-      .select('id, user_id, original_whistle_id, group_id, created_at, profiles!reposts_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id), whistles!reposts_original_whistle_id_fkey(id, user_id, audio_url, duration_s, caption, likes_count, comments_count, group_id, created_at, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id))')
-      .eq('group_id', id)
+      .select('id, user_id, original_whistle_id, group_id, created_at, profiles!reposts_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id), whistles!reposts_original_whistle_id_fkey(id, public_id, user_id, audio_url, duration_s, caption, likes_count, comments_count, group_id, created_at, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id))')
+      .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(30),
   ])

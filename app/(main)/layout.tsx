@@ -39,14 +39,14 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   const [activeCompetitionsResult, todayTopResult, weekTopResult] = await Promise.all([
     supabase
       .from('competitions')
-      .select('id, title, theme, submission_ends_at, voting_ends_at')
+      .select('id, public_id, slug, title, theme, submission_ends_at, voting_ends_at')
       .is('group_id', null)
       .gte('voting_ends_at', now)
       .order('submission_ends_at', { ascending: true })
       .limit(4),
     supabase
       .from('whistles')
-      .select('id, caption, likes_count, comments_count, profiles!whistles_user_id_fkey(username, display_name)')
+      .select('id, public_id, caption, likes_count, comments_count, profiles!whistles_user_id_fkey(username, display_name)')
       .or(publicScopeFilter)
       .gte('created_at', dayAgo)
       .lte('created_at', now)
@@ -54,7 +54,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       .limit(10),
     supabase
       .from('whistles')
-      .select('id, caption, likes_count, comments_count, profiles!whistles_user_id_fkey(username, display_name)')
+      .select('id, public_id, caption, likes_count, comments_count, profiles!whistles_user_id_fkey(username, display_name)')
       .or(publicScopeFilter)
       .gte('created_at', weekAgo)
       .lte('created_at', now)

@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { Trophy } from 'lucide-react'
 import type { Profile } from '@/types/database'
+import { buildCompetitionPath, buildWhistlePath } from '@/lib/routes'
 
 interface SidebarCompetition {
   id: string
+  public_id: string
+  slug: string
   title: string
   theme: string
   submission_ends_at: string
@@ -12,6 +15,7 @@ interface SidebarCompetition {
 
 interface SidebarTrendingWhistle {
   id: string
+  public_id: string
   caption: string
   likes_count: number
   comments_count: number
@@ -58,7 +62,7 @@ function TrendingList({ items, empty }: { items: SidebarTrendingWhistle[]; empty
   return items.map((item, index) => (
     <Link
       key={item.id}
-      href={`/assobio/${item.id}`}
+      href={buildWhistlePath(item)}
       className="block border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-[var(--hover-bg)]"
       style={{ borderColor: 'var(--border)' }}
     >
@@ -124,7 +128,7 @@ export function RightSidebar({ profile, competitions, todayTop, weekTop }: Right
           competitions.map((competition) => (
             <Link
               key={competition.id}
-              href={`/competicoes/${competition.id}`}
+              href={buildCompetitionPath(competition)}
               className="block border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-[var(--hover-bg)]"
               style={{ borderColor: 'var(--border)' }}
             >

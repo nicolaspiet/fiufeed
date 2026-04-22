@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { Trophy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { signAudioUrls } from '@/lib/audio-url'
@@ -6,18 +6,31 @@ import { CompetitionEntries } from '@/components/competition/CompetitionEntries'
 import { CountdownTimer } from '@/components/competition/CountdownTimer'
 import { SubmitEntryButton } from '@/components/competition/SubmitEntryButton'
 import { getEquippedDecorations } from '@/lib/profile-decorations'
+import { buildCompetitionPath, extractCompetitionPublicId, isUuid } from '@/lib/routes'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 export default async function CompeticaoPage({ params }: PageProps) {
-  const { id } = await params
+  const { id: segment } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: competition } = await supabase.from('competitions').select('*').eq('id', id).single()
+  const lookupPublicId = extractCompetitionPublicId(segment)
+  const competitionQuery = supabase.from('competitions').select('*')
+  const { data: competition } = isUuid(segment)
+    ? await competitionQuery.eq('id', segment).single()
+    : await competitionQuery.eq('public_id', lookupPublicId ?? segment).single()
+
   if (!competition) notFound()
+
+  const canonicalPath = buildCompetitionPath(competition)
+  if (canonicalPath !== `/competicoes/${segment}`) {
+    redirect(canonicalPath)
+  }
+
+  const competitionId = competition.id
 
   const now = Date.now()
   const submissionOpen = now < new Date(competition.submission_ends_at).getTime()
@@ -26,7 +39,7 @@ export default async function CompeticaoPage({ params }: PageProps) {
   const winnerHighlightOpen = ended && now < new Date(competition.voting_ends_at).getTime() + 3600000
 
   if (ended) {
-    await supabase.rpc('settle_competition_rewards', { p_competition_id: id })
+    await supabase.rpc('settle_competition_rewards', { p_competition_id: competitionId })
   }
 
   let userEntry: string | null = null
@@ -49,7 +62,7 @@ export default async function CompeticaoPage({ params }: PageProps) {
     const { data: entryRow } = await supabase
       .from('competition_entries')
       .select('id, user_id, votes_count, profiles!inner(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id), whistles!inner(audio_url, duration_s, caption)')
-      .match({ competition_id: id, user_id: user.id })
+      .match({ competition_id: competitionId, user_id: user.id })
       .maybeSingle()
 
     if (entryRow) {
@@ -68,7 +81,7 @@ export default async function CompeticaoPage({ params }: PageProps) {
     const { data: voteRow } = await supabase
       .from('competition_votes')
       .select('entry_id')
-      .match({ competition_id: id, user_id: user.id })
+      .match({ competition_id: competitionId, user_id: user.id })
       .maybeSingle()
     userVotedEntry = voteRow?.entry_id ?? null
   }
@@ -93,7 +106,7 @@ export default async function CompeticaoPage({ params }: PageProps) {
     const { data } = await supabase
       .from('competition_entries')
       .select('*, profiles!inner(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id), whistles!inner(audio_url, duration_s, caption)')
-      .eq('competition_id', id)
+      .eq('competition_id', competitionId)
       .order('votes_count', { ascending: false })
       .order('created_at', { ascending: true })
 
@@ -123,7 +136,7 @@ export default async function CompeticaoPage({ params }: PageProps) {
     const { data: competitionComments } = await supabase
       .from('competition_comments')
       .select('id, entry_id, user_id, content, created_at')
-      .eq('competition_id', id)
+      .eq('competition_id', competitionId)
       .order('created_at', { ascending: true })
 
     const commentUserIds = Array.from(new Set((competitionComments ?? []).map((comment) => comment.user_id)))
@@ -184,7 +197,7 @@ export default async function CompeticaoPage({ params }: PageProps) {
       {submissionOpen && user && !userEntry && (
         <div className="border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
           <SubmitEntryButton
-            competitionId={id}
+            competitionId={competitionId}
             competitionTitle={competition.title}
             competitionGroupId={competition.group_id}
             userId={user.id}
@@ -203,7 +216,7 @@ export default async function CompeticaoPage({ params }: PageProps) {
           <CompetitionEntries
             entries={[ownSubmission]}
             currentUserId={user?.id ?? null}
-            competitionId={id}
+            competitionId={competitionId}
             canVote={false}
             canComment={false}
             userVotedEntry={userVotedEntry}
@@ -232,7 +245,7 @@ export default async function CompeticaoPage({ params }: PageProps) {
         <CompetitionEntries
           entries={entries}
           currentUserId={user?.id ?? null}
-          competitionId={id}
+          competitionId={competitionId}
           canVote={votingOpen}
           canComment={votingOpen || ended}
           userVotedEntry={userVotedEntry}

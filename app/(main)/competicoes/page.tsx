@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Plus, Trophy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { CountdownTimer } from '@/components/competition/CountdownTimer'
+import { buildCompetitionPath } from '@/lib/routes'
 
 export default async function CompeticoesPage() {
   const supabase = await createClient()
@@ -69,7 +70,7 @@ export default async function CompeticoesPage() {
             return (
               <Link
                 key={competition.id}
-                href={`/competicoes/${competition.id}`}
+                href={buildCompetitionPath(competition)}
                 className="block border-b px-4 py-4 transition-colors hover:bg-[var(--hover-bg)]"
                 style={{ borderColor: 'var(--border)' }}
               >
@@ -101,7 +102,7 @@ export default async function CompeticoesPage() {
           {(past ?? []).map((competition) => (
             <Link
               key={competition.id}
-              href={`/competicoes/${competition.id}`}
+              href={buildCompetitionPath(competition)}
               className="flex items-center gap-3 border-b px-4 py-3 transition-colors hover:bg-[var(--hover-bg)]"
               style={{ borderColor: 'var(--border)' }}
             >

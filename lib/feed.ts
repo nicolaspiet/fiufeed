@@ -12,6 +12,7 @@ interface ProfilePreview {
 
 interface WhistleRowWithProfile {
   id: string
+  public_id: string
   user_id: string
   audio_url: string
   duration_s: number
@@ -44,6 +45,7 @@ export function toFeedItemFromWhistle(whistle: WhistleRowWithProfile): FeedItem 
     item_type: 'whistle',
     item_id: whistle.id,
     original_whistle_id: whistle.id,
+    original_public_id: whistle.public_id,
     actor_user_id: whistle.user_id,
     audio_url: whistle.audio_url,
     duration_s: whistle.duration_s,
@@ -70,6 +72,7 @@ export function toFeedItemFromRepost(repost: RepostRowWithRelations): FeedItem {
     item_type: 'repost',
     item_id: repost.id,
     original_whistle_id: repost.original_whistle_id,
+    original_public_id: repost.whistles.public_id,
     actor_user_id: repost.user_id,
     audio_url: repost.whistles.audio_url,
     duration_s: repost.whistles.duration_s,
