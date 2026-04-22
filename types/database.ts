@@ -392,6 +392,23 @@ export interface Database {
         Args: { p_title_base: string; p_place: number }
         Returns: string
       }
+      create_competition_entry_with_whistle: {
+        Args: {
+          p_competition_id: string
+          p_audio_url: string
+          p_duration_s: number
+          p_caption?: string
+          p_group_id?: string | null
+        }
+        Returns: {
+          id: string
+          public_id: string
+          audio_url: string
+          duration_s: number
+          caption: string
+          group_id: string | null
+        }[]
+      }
       get_competition_whistle_ids: {
         Args: Record<string, never>
         Returns: { whistle_id: string }[]
