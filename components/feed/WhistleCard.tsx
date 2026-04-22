@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Copy, Heart, MessageCircle, MoreHorizontal, Repeat2, Share2, Trash2 } from 'lucide-react'
+import { Bird, Copy, Heart, MessageCircle, MoreHorizontal, Repeat2, Share2, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { WhistlePlayer } from '@/components/audio/WhistlePlayer'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
@@ -248,13 +248,25 @@ export function WhistleCard({
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-baseline gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Link href={`/perfil/${whistle.username}`} className="truncate text-sm font-semibold hover:underline" style={{ color: 'var(--text)' }}>
                   {whistle.display_name}
                 </Link>
+                {whistle.equipped_badge_label && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
+                    <Bird size={12} />
+                    {whistle.equipped_badge_label}
+                  </span>
+                )}
                 <span className="truncate text-sm" style={{ color: 'var(--text-muted)' }}>@{whistle.username}</span>
                 <span className="flex-shrink-0 text-xs" style={{ color: 'var(--text-faint)' }}>· {timeAgo(whistle.created_at)}</span>
               </div>
+
+              {whistle.equipped_title && (
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-faint)' }}>
+                  {whistle.equipped_title}
+                </p>
+              )}
 
               {isRepost ? (
                 <p className="mt-0.5 text-xs" style={{ color: 'var(--text-faint)' }}>

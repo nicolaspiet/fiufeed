@@ -12,6 +12,8 @@ export interface Database {
           banner_url: string | null
           bio: string
           is_site_admin: boolean
+          equipped_badge_id: string | null
+          equipped_title_id: string | null
           created_at: string
         }
         Insert: {
@@ -22,6 +24,8 @@ export interface Database {
           banner_url?: string | null
           bio?: string
           is_site_admin?: boolean
+          equipped_badge_id?: string | null
+          equipped_title_id?: string | null
           created_at?: string
         }
         Update: {
@@ -31,6 +35,8 @@ export interface Database {
           banner_url?: string | null
           bio?: string
           is_site_admin?: boolean
+          equipped_badge_id?: string | null
+          equipped_title_id?: string | null
         }
         Relationships: []
       }
@@ -166,6 +172,28 @@ export interface Database {
         }
         Relationships: []
       }
+      competition_comments: {
+        Row: {
+          id: string
+          competition_id: string
+          entry_id: string
+          user_id: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          competition_id: string
+          entry_id: string
+          user_id: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          content?: string
+        }
+        Relationships: []
+      }
       groups: {
         Row: {
           id: string
@@ -220,6 +248,7 @@ export interface Database {
           title: string
           theme: string
           description: string
+          title_base: string
           submission_ends_at: string
           voting_ends_at: string
           group_id: string | null
@@ -231,6 +260,7 @@ export interface Database {
           title: string
           theme: string
           description?: string
+          title_base: string
           submission_ends_at: string
           voting_ends_at: string
           group_id?: string | null
@@ -241,6 +271,7 @@ export interface Database {
           title?: string
           theme?: string
           description?: string
+          title_base?: string
         }
         Relationships: []
       }
@@ -301,9 +332,62 @@ export interface Database {
         }
         Relationships: []
       }
+      user_badges: {
+        Row: {
+          id: string
+          user_id: string
+          competition_id: string
+          label: string
+          icon: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          competition_id: string
+          label?: string
+          icon?: string
+          created_at?: string
+        }
+        Update: {
+          label?: string
+          icon?: string
+        }
+        Relationships: []
+      }
+      user_titles: {
+        Row: {
+          id: string
+          user_id: string
+          competition_id: string
+          tier: 'gold' | 'silver' | 'bronze'
+          title: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          competition_id: string
+          tier: 'gold' | 'silver' | 'bronze'
+          title: string
+          created_at?: string
+        }
+        Update: {
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
+      competition_title_for_place: {
+        Args: { p_title_base: string; p_place: number }
+        Returns: string
+      }
+      get_competition_whistle_ids: {
+        Args: Record<string, never>
+        Returns: { whistle_id: string }[]
+      }
       get_feed: {
         Args: { p_user_id: string; p_limit?: number; p_offset?: number }
         Returns: {
@@ -322,11 +406,17 @@ export interface Database {
           username: string
           display_name: string
           avatar_url: string | null
+          equipped_badge_label: string | null
+          equipped_title: string | null
           original_user_id: string
           original_username: string
           original_display_name: string
           original_avatar_url: string | null
         }[]
+      }
+      is_competition_participant: {
+        Args: { p_competition_id: string; p_user_id?: string }
+        Returns: boolean
       }
       remove_group_member: {
         Args: { p_group_id: string; p_target_user_id: string }
@@ -336,16 +426,21 @@ export interface Database {
         Args: { p_group_id: string; p_target_user_id: string; p_role: 'admin' | 'member' }
         Returns: undefined
       }
+      settle_competition_rewards: {
+        Args: { p_competition_id: string }
+        Returns: undefined
+      }
     }
   }
 }
 
-// Convenience types
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Whistle = Database['public']['Tables']['whistles']['Row']
 export type Repost = Database['public']['Tables']['reposts']['Row']
+export type UserBadge = Database['public']['Tables']['user_badges']['Row']
+export type UserTitle = Database['public']['Tables']['user_titles']['Row']
 export type WhistleWithProfile = Whistle & {
-  profiles: Pick<Profile, 'username' | 'display_name' | 'avatar_url'>
+  profiles: Pick<Profile, 'username' | 'display_name' | 'avatar_url' | 'equipped_badge_id' | 'equipped_title_id'>
 }
 export type FeedItem = Database['public']['Functions']['get_feed']['Returns'][number]
 export type Group = Database['public']['Tables']['groups']['Row']

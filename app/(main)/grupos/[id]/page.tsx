@@ -5,6 +5,8 @@ import { GroupHeader } from '@/components/groups/GroupHeader'
 import { GroupMembersManager } from '@/components/groups/GroupMembersManager'
 import { createSignedAudioUrl } from '@/lib/audio-url'
 import { sortFeedItems, toFeedItemFromRepost, toFeedItemFromWhistle } from '@/lib/feed'
+import { getEquippedDecorations } from '@/lib/profile-decorations'
+import { filterOutCompetitionReposts, filterOutCompetitionWhistles, getCompetitionWhistleIds } from '@/lib/competition'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -66,30 +68,52 @@ export default async function GrupoPage({ params }: PageProps) {
       return order[left.role] - order[right.role]
     })
 
-  const [{ data: whistles }, { data: reposts }] = await Promise.all([
+  const competitionWhistleIds = await getCompetitionWhistleIds(supabase)
+
+  const [{ data: whistlesRaw }, { data: repostsRaw }] = await Promise.all([
     supabase
       .from('whistles')
-      .select('*, profiles!whistles_user_id_fkey(username, display_name, avatar_url)')
+      .select('*, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id)')
       .eq('group_id', id)
       .order('created_at', { ascending: false })
       .limit(30),
     supabase
       .from('reposts')
-      .select('id, user_id, original_whistle_id, group_id, created_at, profiles!reposts_user_id_fkey(username, display_name, avatar_url), whistles!reposts_original_whistle_id_fkey(id, user_id, audio_url, duration_s, caption, likes_count, comments_count, group_id, created_at, profiles!whistles_user_id_fkey(username, display_name, avatar_url))')
+      .select('id, user_id, original_whistle_id, group_id, created_at, profiles!reposts_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id), whistles!reposts_original_whistle_id_fkey(id, user_id, audio_url, duration_s, caption, likes_count, comments_count, group_id, created_at, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id))')
       .eq('group_id', id)
       .order('created_at', { ascending: false })
       .limit(30),
   ])
 
+  const whistles = filterOutCompetitionWhistles(whistlesRaw ?? [], competitionWhistleIds)
+  const reposts = filterOutCompetitionReposts(repostsRaw ?? [], competitionWhistleIds)
+  const decorationMap = await getEquippedDecorations(supabase, [
+    ...whistles.map((whistle) => whistle.profiles),
+    ...reposts.map((repost) => repost.profiles),
+    ...reposts.map((repost) => repost.whistles.profiles),
+  ])
+
   const feedItems = sortFeedItems([
     ...await Promise.all((whistles ?? []).map(async (whistle) => toFeedItemFromWhistle({
       ...whistle,
+      profiles: {
+        ...whistle.profiles,
+        ...decorationMap.get(whistle.profiles.id),
+      },
       audio_url: await createSignedAudioUrl(supabase, whistle.audio_url),
     }))),
     ...await Promise.all((reposts ?? []).map(async (repost) => toFeedItemFromRepost({
       ...repost,
+      profiles: {
+        ...repost.profiles,
+        ...decorationMap.get(repost.profiles.id),
+      },
       whistles: {
         ...repost.whistles,
+        profiles: {
+          ...repost.whistles.profiles,
+          ...decorationMap.get(repost.whistles.profiles.id),
+        },
         audio_url: await createSignedAudioUrl(supabase, repost.whistles.audio_url),
       },
     }))),

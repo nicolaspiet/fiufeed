@@ -12,6 +12,7 @@ export default function NovaCompeticaoPage() {
   const [title, setTitle] = useState('')
   const [theme, setTheme] = useState('')
   const [description, setDescription] = useState('')
+  const [titleBase, setTitleBase] = useState('')
   const [submissionEndsAt, setSubmissionEndsAt] = useState('')
   const [votingEndsAt, setVotingEndsAt] = useState('')
   const [groupId, setGroupId] = useState('')
@@ -117,6 +118,7 @@ export default function NovaCompeticaoPage() {
         title: title.trim(),
         theme: theme.trim(),
         description: description.trim(),
+        title_base: titleBase.trim(),
         submission_ends_at: submissionDate.toISOString(),
         voting_ends_at: votingDate.toISOString(),
         group_id: groupId === 'public' ? null : groupId,
@@ -191,6 +193,22 @@ export default function NovaCompeticaoPage() {
         </div>
 
         <div>
+          <label className="mb-1.5 block text-sm" style={{ color: 'var(--text-muted)' }}>Base do título</label>
+          <input
+            value={titleBase}
+            onChange={(event) => setTitleBase(event.target.value)}
+            required
+            maxLength={60}
+            placeholder="Ex: Mestre do Amanhecer"
+            className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+          />
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-faint)' }}>
+            O sistema vai gerar Ouro, Prata e Bronze a partir dessa base.
+          </p>
+        </div>
+
+        <div>
           <label className="mb-1.5 block text-sm" style={{ color: 'var(--text-muted)' }}>Descrição</label>
           <textarea
             value={description}
@@ -251,7 +269,7 @@ export default function NovaCompeticaoPage() {
 
         <button
           type="submit"
-          disabled={loading || booting || !title.trim() || !theme.trim() || !groupId}
+          disabled={loading || booting || !title.trim() || !theme.trim() || !titleBase.trim() || !groupId}
           className="w-full rounded-xl py-3 font-semibold transition-colors disabled:opacity-50"
           style={{ background: 'var(--text)', color: 'var(--bg)' }}
         >

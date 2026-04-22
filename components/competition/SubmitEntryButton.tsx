@@ -9,10 +9,16 @@ import { WhistleRecorderSheet, type CreatedWhistle } from '@/components/audio/Wh
 interface SubmitEntryButtonProps {
   competitionId: string
   competitionTitle: string
+  competitionGroupId?: string | null
   userId: string
 }
 
-export function SubmitEntryButton({ competitionId, competitionTitle, userId }: SubmitEntryButtonProps) {
+export function SubmitEntryButton({
+  competitionId,
+  competitionTitle,
+  competitionGroupId,
+  userId,
+}: SubmitEntryButtonProps) {
   const supabase = createClient()
   const router = useRouter()
   const [showRecorder, setShowRecorder] = useState(false)
@@ -52,6 +58,7 @@ export function SubmitEntryButton({ competitionId, competitionTitle, userId }: S
       {showRecorder && (
         <WhistleRecorderSheet
           userId={userId}
+          groupId={competitionGroupId ?? undefined}
           destinationLabel={`Competição: ${competitionTitle}`}
           onClose={() => setShowRecorder(false)}
           onPosted={handlePosted}

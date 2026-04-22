@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CommentForm } from '@/components/comments/CommentForm'
 import { WhistleCard } from '@/components/feed/WhistleCard'
 import { createSignedAudioUrl } from '@/lib/audio-url'
 import { toFeedItemFromWhistle } from '@/lib/feed'
+import { getEquippedDecorations } from '@/lib/profile-decorations'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -29,11 +30,21 @@ export default async function AssobioPage({ params }: PageProps) {
 
   const { data: whistle } = await supabase
     .from('whistles')
-    .select('*, profiles!whistles_user_id_fkey(username, display_name, avatar_url)')
+    .select('*, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id)')
     .eq('id', id)
     .single()
 
   if (!whistle) notFound()
+
+  const { data: competitionEntry } = await supabase
+    .from('competition_entries')
+    .select('competition_id')
+    .eq('whistle_id', id)
+    .maybeSingle()
+
+  if (competitionEntry?.competition_id) {
+    redirect(`/competicoes/${competitionEntry.competition_id}`)
+  }
 
   const { data: comments } = await supabase
     .from('comments')
@@ -47,6 +58,7 @@ export default async function AssobioPage({ params }: PageProps) {
     : { data: [] }
 
   const profileById = new Map((commentProfiles ?? []).map((profile) => [profile.id, profile]))
+  const decorationMap = await getEquippedDecorations(supabase, [whistle.profiles])
 
   const { data: likedRow } = user
     ? await supabase.from('likes').select('whistle_id').match({ user_id: user.id, whistle_id: id }).maybeSingle()
@@ -57,6 +69,10 @@ export default async function AssobioPage({ params }: PageProps) {
 
   const feedItem = toFeedItemFromWhistle({
     ...whistle,
+    profiles: {
+      ...whistle.profiles,
+      ...decorationMap.get(whistle.profiles.id),
+    },
     audio_url: await createSignedAudioUrl(supabase, whistle.audio_url),
   })
 

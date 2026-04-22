@@ -2,9 +2,9 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Camera } from 'lucide-react'
+import { ArrowLeft, Bird, Camera } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile } from '@/types/database'
+import type { Profile, UserBadge, UserTitle } from '@/types/database'
 
 interface ProfileHeaderProps {
   profile: Profile
@@ -13,6 +13,10 @@ interface ProfileHeaderProps {
   isOwnProfile: boolean
   isFollowing: boolean
   currentUserId: string | null
+  equippedBadgeLabel: string | null
+  equippedTitle: string | null
+  badgeInventory: UserBadge[]
+  titleInventory: UserTitle[]
 }
 
 export function ProfileHeader({
@@ -22,6 +26,10 @@ export function ProfileHeader({
   isOwnProfile,
   isFollowing: initialFollowing,
   currentUserId,
+  equippedBadgeLabel,
+  equippedTitle,
+  badgeInventory,
+  titleInventory,
 }: ProfileHeaderProps) {
   const supabase = createClient()
   const router = useRouter()
@@ -37,6 +45,9 @@ export function ProfileHeader({
   const [saving, setSaving] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url)
   const [bannerUrl, setBannerUrl] = useState(profile.banner_url)
+  const [selectedBadgeId, setSelectedBadgeId] = useState(profile.equipped_badge_id ?? '')
+  const [selectedTitleId, setSelectedTitleId] = useState(profile.equipped_title_id ?? '')
+  const [equipmentSaving, setEquipmentSaving] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const imageMaxBytes = 4 * 1024 * 1024
@@ -123,6 +134,29 @@ export function ProfileHeader({
 
     setSaving(false)
     setEditing(false)
+    router.refresh()
+  }
+
+  async function saveEquipment() {
+    if (!currentUserId || !isOwnProfile || equipmentSaving) return
+    setEquipmentSaving(true)
+    setActionError(null)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        equipped_badge_id: selectedBadgeId || null,
+        equipped_title_id: selectedTitleId || null,
+      })
+      .eq('id', currentUserId)
+
+    if (error) {
+      setActionError('Erro ao equipar badge ou título.')
+      setEquipmentSaving(false)
+      return
+    }
+
+    setEquipmentSaving(false)
     router.refresh()
   }
 
@@ -237,10 +271,68 @@ export function ProfileHeader({
           </div>
         ) : (
           <>
-            <h1 className="text-lg font-bold leading-tight" style={{ color: 'var(--text)' }}>{profile.display_name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-bold leading-tight" style={{ color: 'var(--text)' }}>{profile.display_name}</h1>
+              {equippedBadgeLabel && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
+                  <Bird size={12} />
+                  {equippedBadgeLabel}
+                </span>
+              )}
+            </div>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>@{profile.username}</p>
+            {equippedTitle && (
+              <p className="mt-1 text-sm" style={{ color: 'var(--text-faint)' }}>{equippedTitle}</p>
+            )}
             {profile.bio && <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{profile.bio}</p>}
           </>
+        )}
+
+        {isOwnProfile && (badgeInventory.length > 0 || titleInventory.length > 0) && (
+          <div className="mt-4 space-y-3 rounded-2xl px-4 py-4" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Badge e título em uso</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-faint)' }}>
+                  Bird badge
+                </label>
+                <select
+                  value={selectedBadgeId}
+                  onChange={(event) => setSelectedBadgeId(event.target.value)}
+                  className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                >
+                  <option value="">Sem badge</option>
+                  {badgeInventory.map((badge) => (
+                    <option key={badge.id} value={badge.id}>{badge.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-faint)' }}>
+                  Título
+                </label>
+                <select
+                  value={selectedTitleId}
+                  onChange={(event) => setSelectedTitleId(event.target.value)}
+                  className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                >
+                  <option value="">Sem título</option>
+                  {titleInventory.map((title) => (
+                    <option key={title.id} value={title.id}>{title.title}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <button
+              onClick={saveEquipment}
+              disabled={equipmentSaving}
+              className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50 hover:bg-emerald-400"
+            >
+              {equipmentSaving ? 'Salvando...' : 'Salvar badge e título'}
+            </button>
+          </div>
         )}
 
         {actionError && <p className="mt-1 text-xs text-red-500">{actionError}</p>}

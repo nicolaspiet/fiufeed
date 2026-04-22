@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { signAudioUrls } from '@/lib/audio-url'
 import { WhistleCard } from '@/components/feed/WhistleCard'
+import { stabilizeFeedItems } from '@/lib/feed'
 
 export default async function FeedPage() {
   const supabase = await createClient()
@@ -10,11 +11,11 @@ export default async function FeedPage() {
 
   const { data: rawFeedItems } = await supabase.rpc('get_feed', {
     p_user_id: user.id,
-    p_limit: 30,
+    p_limit: 90,
     p_offset: 0,
   })
 
-  const feedItems = await signAudioUrls(supabase, rawFeedItems ?? [])
+  const feedItems = stabilizeFeedItems(await signAudioUrls(supabase, rawFeedItems ?? []), 30)
   const originalWhistleIds = Array.from(new Set(feedItems.map((item) => item.original_whistle_id)))
 
   const { data: likedRows } = originalWhistleIds.length > 0

@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/ui/BottomNav'
 import { RightSidebar } from '@/components/ui/RightSidebar'
 import { Sidebar } from '@/components/ui/Sidebar'
 import { PostButton } from '@/components/ui/PostButton'
+import { filterOutCompetitionWhistles, getCompetitionWhistleIds } from '@/lib/competition'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -23,6 +24,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   const now = new Date().toISOString()
   const dayAgo = new Date(Date.now() - 86400000).toISOString()
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+  const competitionWhistleIds = await getCompetitionWhistleIds(supabase)
+
   const { data: publicGroupRows } = await supabase
     .from('groups')
     .select('id')
@@ -48,7 +51,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       .gte('created_at', dayAgo)
       .lte('created_at', now)
       .order('likes_count', { ascending: false })
-      .limit(3),
+      .limit(10),
     supabase
       .from('whistles')
       .select('id, caption, likes_count, comments_count, profiles!whistles_user_id_fkey(username, display_name)')
@@ -56,7 +59,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       .gte('created_at', weekAgo)
       .lte('created_at', now)
       .order('likes_count', { ascending: false })
-      .limit(3),
+      .limit(10),
   ])
 
   return (
@@ -76,8 +79,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
               <RightSidebar
                 profile={profile}
                 competitions={activeCompetitionsResult.data ?? []}
-                todayTop={todayTopResult.data ?? []}
-                weekTop={weekTopResult.data ?? []}
+                todayTop={filterOutCompetitionWhistles(todayTopResult.data ?? [], competitionWhistleIds).slice(0, 3)}
+                weekTop={filterOutCompetitionWhistles(weekTopResult.data ?? [], competitionWhistleIds).slice(0, 3)}
               />
             </div>
           </div>

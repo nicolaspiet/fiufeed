@@ -4,7 +4,11 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Maximize2, Minimize2, Radio, Trophy, Users } from 'lucide-react'
 
-export function HeroSection() {
+interface HeroSectionProps {
+  isLoggedIn?: boolean
+}
+
+export function HeroSection({ isLoggedIn = false }: HeroSectionProps) {
   const [fullBleed, setFullBleed] = useState(true)
 
   const videoUrl =
@@ -43,16 +47,16 @@ export function HeroSection() {
 
           <div className="hidden items-center gap-2 sm:flex">
             <Link
-              href="/entrar"
+              href={isLoggedIn ? '/feed' : '/entrar'}
               className="rounded-full px-4 py-2 text-sm font-medium text-white/88 transition hover:bg-white/10"
             >
-              Entrar
+              {isLoggedIn ? 'Abrir feed' : 'Entrar'}
             </Link>
             <Link
-              href="/cadastro"
+              href={isLoggedIn ? '/feed' : '/cadastro'}
               className="rounded-full bg-[#4ade80] px-4 py-2 text-sm font-semibold text-[#062416] shadow-[0_12px_36px_rgba(74,222,128,0.22)] transition hover:brightness-110"
             >
-              Criar conta
+              {isLoggedIn ? 'Ir para o app' : 'Criar conta'}
             </Link>
           </div>
         </div>
@@ -77,16 +81,16 @@ export function HeroSection() {
 
             <div className="mt-7 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
               <Link
-                href="/cadastro"
+                href={isLoggedIn ? '/feed' : '/cadastro'}
                 className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#4ade80] px-6 text-base font-semibold text-[#062416] shadow-[0_16px_50px_rgba(74,222,128,0.24)] transition hover:-translate-y-0.5 hover:brightness-105"
               >
-                Criar conta grátis
+                {isLoggedIn ? 'Abrir meu feed' : 'Criar conta grátis'}
               </Link>
               <Link
-                href="/entrar"
+                href={isLoggedIn ? '/competicoes' : '/entrar'}
                 className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-white/10 px-6 text-base font-medium text-white backdrop-blur-xl transition hover:bg-white/14"
               >
-                Entrar
+                {isLoggedIn ? 'Ver competições' : 'Entrar'}
               </Link>
             </div>
 
@@ -155,16 +159,16 @@ export function HeroSection() {
 
         <div className="mx-auto mt-5 flex w-full max-w-md gap-3 sm:hidden">
           <Link
-            href="/entrar"
+            href={isLoggedIn ? '/feed' : '/entrar'}
             className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-white/10 px-4 text-sm font-medium text-white backdrop-blur-xl"
           >
-            Entrar
+            {isLoggedIn ? 'Abrir feed' : 'Entrar'}
           </Link>
           <Link
-            href="/cadastro"
+            href={isLoggedIn ? '/competicoes' : '/cadastro'}
             className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#4ade80] px-4 text-sm font-semibold text-[#062416]"
           >
-            Criar conta
+            {isLoggedIn ? 'Competições' : 'Criar conta'}
           </Link>
         </div>
       </div>

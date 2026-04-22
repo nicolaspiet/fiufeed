@@ -4,6 +4,8 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { WhistleCard } from '@/components/feed/WhistleCard'
 import { createSignedAudioUrl } from '@/lib/audio-url'
 import { sortFeedItems, toFeedItemFromRepost, toFeedItemFromWhistle } from '@/lib/feed'
+import { getEquippedDecorations } from '@/lib/profile-decorations'
+import { filterOutCompetitionReposts, filterOutCompetitionWhistles, getCompetitionWhistleIds } from '@/lib/competition'
 
 interface PageProps {
   params: Promise<{ username: string }>
@@ -22,13 +24,11 @@ export default async function PerfilPage({ params }: PageProps) {
 
   if (!profile) notFound()
 
-  // Follower counts
   const [{ count: followersCount }, { count: followingCount }] = await Promise.all([
     supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
     supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
   ])
 
-  // Is current user following this profile?
   let isFollowing = false
   if (user && user.id !== profile.id) {
     const { data } = await supabase.from('follows')
@@ -38,33 +38,64 @@ export default async function PerfilPage({ params }: PageProps) {
     isFollowing = !!data
   }
 
-  const [{ data: whistles }, { data: reposts }] = await Promise.all([
+  const competitionWhistleIds = await getCompetitionWhistleIds(supabase)
+
+  const [{ data: whistlesRaw }, { data: repostsRaw }, { data: badges }, { data: titles }] = await Promise.all([
     supabase
       .from('whistles')
-      .select('*, profiles!whistles_user_id_fkey(username, display_name, avatar_url)')
+      .select('*, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id)')
       .eq('user_id', profile.id)
       .is('group_id', null)
       .order('created_at', { ascending: false })
       .limit(30),
     supabase
       .from('reposts')
-      .select('id, user_id, original_whistle_id, group_id, created_at, profiles!reposts_user_id_fkey(username, display_name, avatar_url), whistles!reposts_original_whistle_id_fkey(id, user_id, audio_url, duration_s, caption, likes_count, comments_count, group_id, created_at, profiles!whistles_user_id_fkey(username, display_name, avatar_url))')
+      .select('id, user_id, original_whistle_id, group_id, created_at, profiles!reposts_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id), whistles!reposts_original_whistle_id_fkey(id, user_id, audio_url, duration_s, caption, likes_count, comments_count, group_id, created_at, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id))')
       .eq('user_id', profile.id)
       .is('group_id', null)
       .order('created_at', { ascending: false })
       .limit(30),
+    user?.id === profile.id
+      ? supabase.from('user_badges').select('*').eq('user_id', profile.id).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    user?.id === profile.id
+      ? supabase.from('user_titles').select('*').eq('user_id', profile.id).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
   ])
 
-  // Liked whistle IDs
+  const whistles = filterOutCompetitionWhistles(whistlesRaw ?? [], competitionWhistleIds)
+  const reposts = filterOutCompetitionReposts(repostsRaw ?? [], competitionWhistleIds)
+
+  const decorationMap = await getEquippedDecorations(supabase, [
+    ...whistles.map((whistle) => whistle.profiles),
+    ...reposts.map((repost) => repost.profiles),
+    ...reposts.map((repost) => repost.whistles.profiles),
+    profile,
+  ])
+
+  const equippedProfileDecoration = decorationMap.get(profile.id) ?? { equipped_badge_label: null, equipped_title: null }
+
   const feedItems = sortFeedItems([
     ...await Promise.all((whistles ?? []).map(async (whistle) => toFeedItemFromWhistle({
       ...whistle,
+      profiles: {
+        ...whistle.profiles,
+        ...decorationMap.get(whistle.profiles.id),
+      },
       audio_url: await createSignedAudioUrl(supabase, whistle.audio_url),
     }))),
     ...await Promise.all((reposts ?? []).map(async (repost) => toFeedItemFromRepost({
       ...repost,
+      profiles: {
+        ...repost.profiles,
+        ...decorationMap.get(repost.profiles.id),
+      },
       whistles: {
         ...repost.whistles,
+        profiles: {
+          ...repost.whistles.profiles,
+          ...decorationMap.get(repost.whistles.profiles.id),
+        },
         audio_url: await createSignedAudioUrl(supabase, repost.whistles.audio_url),
       },
     }))),
@@ -74,7 +105,7 @@ export default async function PerfilPage({ params }: PageProps) {
   const { data: likedRows } = user && originalWhistleIds.length > 0
     ? await supabase.from('likes').select('whistle_id').eq('user_id', user.id).in('whistle_id', originalWhistleIds)
     : { data: [] }
-  const likedSet = new Set((likedRows ?? []).map(r => r.whistle_id))
+  const likedSet = new Set((likedRows ?? []).map((row) => row.whistle_id))
   const { data: repostRows } = user && originalWhistleIds.length > 0
     ? await supabase
       .from('reposts')
@@ -93,6 +124,10 @@ export default async function PerfilPage({ params }: PageProps) {
         isOwnProfile={user?.id === profile.id}
         isFollowing={isFollowing}
         currentUserId={user?.id ?? null}
+        equippedBadgeLabel={equippedProfileDecoration.equipped_badge_label}
+        equippedTitle={equippedProfileDecoration.equipped_title}
+        badgeInventory={badges ?? []}
+        titleInventory={titles ?? []}
       />
 
       <div>

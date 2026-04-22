@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { signAudioUrls } from '@/lib/audio-url'
 import { toFeedItemFromWhistle } from '@/lib/feed'
 import { WhistleCard } from '@/components/feed/WhistleCard'
+import { filterOutCompetitionWhistles, getCompetitionWhistleIds } from '@/lib/competition'
+import { getEquippedDecorations } from '@/lib/profile-decorations'
 
 export default async function DescobrirPage() {
   const supabase = await createClient()
@@ -12,28 +14,36 @@ export default async function DescobrirPage() {
   const dayAgo = new Date(Date.now() - 86400000).toISOString()
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
 
-  const [{ data: todayTopRaw }, { data: weekTopRaw }] = await Promise.all([
+  const [{ data: todayTopRaw }, { data: weekTopRaw }, competitionWhistleIds] = await Promise.all([
     supabase
       .from('whistles')
-      .select('*, profiles!whistles_user_id_fkey(username, display_name, avatar_url)')
+      .select('*, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id)')
       .is('group_id', null)
       .gte('created_at', dayAgo)
       .lte('created_at', now)
       .order('likes_count', { ascending: false })
-      .limit(5),
+      .limit(8),
     supabase
       .from('whistles')
-      .select('*, profiles!whistles_user_id_fkey(username, display_name, avatar_url)')
+      .select('*, profiles!whistles_user_id_fkey(id, username, display_name, avatar_url, equipped_badge_id, equipped_title_id)')
       .is('group_id', null)
       .gte('created_at', weekAgo)
       .lte('created_at', now)
       .order('likes_count', { ascending: false })
-      .limit(10),
+      .limit(16),
+    getCompetitionWhistleIds(supabase),
+  ])
+
+  const todayFiltered = filterOutCompetitionWhistles(todayTopRaw ?? [], competitionWhistleIds)
+  const weekFiltered = filterOutCompetitionWhistles(weekTopRaw ?? [], competitionWhistleIds)
+  const decorationMap = await getEquippedDecorations(supabase, [
+    ...todayFiltered.map((whistle) => whistle.profiles),
+    ...weekFiltered.map((whistle) => whistle.profiles),
   ])
 
   const [todayTop, weekTop] = await Promise.all([
-    signAudioUrls(supabase, todayTopRaw ?? []),
-    signAudioUrls(supabase, weekTopRaw ?? []),
+    signAudioUrls(supabase, todayFiltered),
+    signAudioUrls(supabase, weekFiltered),
   ])
 
   return (
@@ -67,7 +77,16 @@ export default async function DescobrirPage() {
                 {index + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <WhistleCard whistle={toFeedItemFromWhistle(whistle)} currentUserId={user?.id ?? null} />
+                <WhistleCard
+                  whistle={toFeedItemFromWhistle({
+                    ...whistle,
+                    profiles: {
+                      ...whistle.profiles,
+                      ...decorationMap.get(whistle.profiles.id),
+                    },
+                  })}
+                  currentUserId={user?.id ?? null}
+                />
               </div>
             </div>
           ))
@@ -84,7 +103,13 @@ export default async function DescobrirPage() {
           weekTop.map((whistle) => (
             <WhistleCard
               key={whistle.id}
-              whistle={toFeedItemFromWhistle(whistle)}
+              whistle={toFeedItemFromWhistle({
+                ...whistle,
+                profiles: {
+                  ...whistle.profiles,
+                  ...decorationMap.get(whistle.profiles.id),
+                },
+              })}
               currentUserId={user?.id ?? null}
             />
           ))
