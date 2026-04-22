@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -o '\"name\":\"Bash\",\"input\":{\"command\":\"[^\"]*\"' \"C:/Users/Pietro/.claude/projects/C--Users-Pietro-desktop-workspace-fiufeed/c7706e2d-6605-4c4f-8a0c-469dcb54b794.jsonl\")"
+    ]
+  }
+}
