@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Mic } from 'lucide-react'
 import { WhistleRecorderSheet } from '@/components/audio/WhistleRecorderSheet'
 
@@ -9,6 +10,7 @@ interface PostButtonProps {
 }
 
 export function PostButton({ userId }: PostButtonProps) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
 
   if (!userId) return null
@@ -30,7 +32,10 @@ export function PostButton({ userId }: PostButtonProps) {
           userId={userId}
           destinationLabel="Fiufeed"
           onClose={() => setOpen(false)}
-          onPosted={async () => setOpen(false)}
+          onPosted={async () => {
+            setOpen(false)
+            router.refresh()
+          }}
         />
       )}
     </>

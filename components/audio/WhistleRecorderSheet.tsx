@@ -121,6 +121,8 @@ export function WhistleRecorderSheet({ userId, groupId, destinationLabel, onClos
     setError('')
 
     try {
+      const whistleId = crypto.randomUUID()
+      const publicId = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
       const path = getAudioStoragePath(userId, 'whistle.webm')
       const { error: uploadError } = await supabase.storage
         .from('audio-whistles')
@@ -128,19 +130,40 @@ export function WhistleRecorderSheet({ userId, groupId, destinationLabel, onClos
 
       if (uploadError) throw uploadError
 
-      const { data: createdWhistle, error: insertError } = await supabase.from('whistles').insert({
+      const createdWhistle = {
+        id: whistleId,
+        audio_url: path,
+        duration_s: elapsed,
+        caption: caption.trim(),
+        group_id: groupId ?? null,
+      }
+
+      const { error: insertError } = await supabase.from('whistles').insert({
+        id: whistleId,
+        public_id: publicId,
         user_id: userId,
         audio_url: path,
         duration_s: elapsed,
         caption: caption.trim(),
         group_id: groupId ?? null,
-      }).select('id, audio_url, duration_s, caption, group_id').single()
+      })
 
       if (insertError) throw insertError
 
       await onPosted(createdWhistle)
     } catch (caughtError: unknown) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Erro ao publicar. Tente novamente.')
+      const errorMessage = caughtError instanceof Error ? caughtError.message : 'Erro ao publicar. Tente novamente.'
+      const normalizedMessage = errorMessage.toLowerCase()
+
+      if (
+        normalizedMessage.includes('404')
+        || normalizedMessage.includes('not found')
+        || normalizedMessage.includes('bucket')
+      ) {
+        setError('Falha ao enviar o áudio. O bucket "audio-whistles" não foi encontrado ou não está configurado no Supabase.')
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setPosting(false)
     }

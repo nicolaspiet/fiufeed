@@ -18,7 +18,7 @@ const securityHeaders = [
       "default-src 'self'",
       `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
       `img-src 'self' data: blob: https://${supabaseHost}`,
-      `media-src 'self' blob: https://${supabaseHost}`,
+      `media-src 'self' blob: https://${supabaseHost} https://d8j0ntlcm91z4.cloudfront.net`,
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
