@@ -1,20 +1,24 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getAuthErrorMessage } from '@/lib/errors'
 
 export default function CadastroPage() {
+  const router = useRouter()
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
 
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault()
+    if (loading) return
+
     setError('')
 
     if (password.length < 8) {
@@ -24,51 +28,47 @@ export default function CadastroPage() {
 
     setLoading(true)
 
-    const { error: registerError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${location.origin}/auth/callback`,
-        data: { full_name: name },
-      },
-    })
+    try {
+      const { error: registerError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${location.origin}/auth/callback`,
+          data: { full_name: name },
+        },
+      })
 
-    if (registerError) {
-      setError(registerError.message)
-    } else {
-      setSent(true)
+      if (registerError) {
+        setError(getAuthErrorMessage(registerError.message, registerError.code))
+      } else {
+        router.push('/feed')
+        router.refresh()
+      }
+    } catch {
+      setError('Não foi possível conectar. Verifique sua conexão e tente novamente.')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   async function handleGoogleLogin() {
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${location.origin}/auth/callback` },
-    })
+    if (loading) return
+    setError('')
+    setLoading(true)
 
-    if (oauthError) {
-      setError(oauthError.message)
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${location.origin}/auth/callback` },
+      })
+      if (oauthError) {
+        setError(getAuthErrorMessage(oauthError.message, oauthError.code))
+        setLoading(false)
+      }
+    } catch {
+      setError('Não foi possível conectar. Verifique sua conexão e tente novamente.')
+      setLoading(false)
     }
-  }
-
-  if (sent) {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
-        <div className="w-full max-w-sm space-y-4 text-center">
-          <div className="text-5xl">📬</div>
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>Verifique seu e-mail</h2>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Enviamos um link de confirmação para <span style={{ color: 'var(--text)' }}>{email}</span>.
-            Clique no link para ativar sua conta.
-          </p>
-          <Link href="/entrar" className="inline-block text-sm font-medium" style={{ color: 'var(--text)' }}>
-            Voltar para o login
-          </Link>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -81,7 +81,8 @@ export default function CadastroPage() {
 
         <button
           onClick={handleGoogleLogin}
-          className="flex w-full items-center justify-center gap-3 rounded-xl py-3 font-medium transition-colors"
+          disabled={loading}
+          className="flex w-full items-center justify-center gap-3 rounded-xl py-3 font-medium transition-colors disabled:opacity-50"
           style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}
           onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover-bg)' }}
           onMouseLeave={(event) => { event.currentTarget.style.background = 'var(--surface)' }}
@@ -135,7 +136,7 @@ export default function CadastroPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              placeholder="Mínimo de 8 caracteres"
+              placeholder="Minimo de 8 caracteres"
               className="w-full rounded-xl px-4 py-3 text-sm transition-colors focus:outline-none"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
             />
@@ -158,7 +159,7 @@ export default function CadastroPage() {
         </form>
 
         <p className="text-center text-sm" style={{ color: 'var(--text-faint)' }}>
-          Já tem conta?{' '}
+          Ja tem conta?{' '}
           <Link href="/entrar" className="font-medium" style={{ color: 'var(--text)' }}>
             Entrar
           </Link>

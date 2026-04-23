@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buildGroupPath } from '@/lib/routes'
+import { getDbErrorMessage } from '@/lib/errors'
 
 export default function NovoGrupoPage() {
   const router = useRouter()
@@ -19,22 +20,29 @@ export default function NovoGrupoPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/entrar'); return }
 
-    const { data, error: err } = await supabase.from('groups').insert({
-      name: name.trim(),
-      description: description.trim(),
-      is_private: isPrivate,
-      owner_id: user.id,
-    }).select().single()
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/entrar'); return }
 
-    if (err) {
-      setError(err.message)
+      const { data, error: err } = await supabase.from('groups').insert({
+        name: name.trim(),
+        description: description.trim(),
+        is_private: isPrivate,
+        owner_id: user.id,
+      }).select().single()
+
+      if (err) {
+        setError(getDbErrorMessage(err.message, err.code))
+        return
+      }
+
+      router.push(buildGroupPath(data))
+    } catch {
+      setError('Não foi possível criar o grupo. Verifique sua conexão e tente novamente.')
+    } finally {
       setLoading(false)
-      return
     }
-    router.push(buildGroupPath(data))
   }
 
   return (
@@ -83,7 +91,11 @@ export default function NovoGrupoPage() {
         </label>
         <p className="text-xs -mt-2" style={{ color: 'var(--text-faint)' }}>Grupos privados só aceitam membros por convite.</p>
 
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {error && (
+          <p className="rounded-lg px-3 py-2 text-sm text-red-400" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
+            {error}
+          </p>
+        )}
 
         <button
           type="submit"

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { buildCompetitionPath } from '@/lib/routes'
+import { getDbErrorMessage } from '@/lib/errors'
 
 export default function NovaCompeticaoPage() {
   const router = useRouter()
@@ -65,7 +66,10 @@ export default function NovaCompeticaoPage() {
       setBooting(false)
     }
 
-    void loadPermissions()
+    void loadPermissions().catch(() => {
+      setError('Não foi possível carregar as permissões. Recarregue a página.')
+      setBooting(false)
+    })
   }, [router, supabase])
 
   async function handleSubmit(event: React.FormEvent) {
@@ -113,28 +117,33 @@ export default function NovaCompeticaoPage() {
 
     setLoading(true)
 
-    const { data, error: insertError } = await supabase
-      .from('competitions')
-      .insert({
-        title: title.trim(),
-        theme: theme.trim(),
-        description: description.trim(),
-        title_base: titleBase.trim(),
-        submission_ends_at: submissionDate.toISOString(),
-        voting_ends_at: votingDate.toISOString(),
-        group_id: groupId === 'public' ? null : groupId,
-        created_by: user.id,
-      })
-      .select('id, public_id, slug, title')
-      .single()
+    try {
+      const { data, error: insertError } = await supabase
+        .from('competitions')
+        .insert({
+          title: title.trim(),
+          theme: theme.trim(),
+          description: description.trim(),
+          title_base: titleBase.trim(),
+          submission_ends_at: submissionDate.toISOString(),
+          voting_ends_at: votingDate.toISOString(),
+          group_id: groupId === 'public' ? null : groupId,
+          created_by: user.id,
+        })
+        .select('id, public_id, slug, title')
+        .single()
 
-    if (insertError) {
-      setError(insertError.message)
+      if (insertError) {
+        setError(getDbErrorMessage(insertError.message, insertError.code))
+        return
+      }
+
+      router.push(buildCompetitionPath(data))
+    } catch {
+      setError('Não foi possível criar a competição. Verifique sua conexão e tente novamente.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    router.push(buildCompetitionPath(data))
   }
 
   if (!booting && !canHost) {
