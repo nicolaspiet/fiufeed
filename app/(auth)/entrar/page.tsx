@@ -1,43 +1,62 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getAuthErrorMessage, getCallbackErrorMessage } from '@/lib/errors'
 
 export default function EntrarPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    const errorCode = searchParams.get('error')
+    if (errorCode) setError(getCallbackErrorMessage(errorCode))
+  }, [searchParams])
+
   async function handleEmailLogin(event: React.FormEvent) {
     event.preventDefault()
     setError('')
     setLoading(true)
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
-    if (loginError) {
-      setError(loginError.message)
-    } else {
-      router.push('/feed')
-      router.refresh()
+    try {
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
+      if (loginError) {
+        setError(getAuthErrorMessage(loginError.message, loginError.code))
+      } else {
+        router.push('/feed')
+        router.refresh()
+      }
+    } catch {
+      setError('Não foi possível conectar. Verifique sua conexão e tente novamente.')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   async function handleGoogleLogin() {
+    if (loading) return
     setError('')
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${location.origin}/auth/callback` },
-    })
+    setLoading(true)
 
-    if (oauthError) {
-      setError(oauthError.message)
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${location.origin}/auth/callback` },
+      })
+      if (oauthError) {
+        setError(getAuthErrorMessage(oauthError.message, oauthError.code))
+        setLoading(false)
+      }
+    } catch {
+      setError('Não foi possível conectar. Verifique sua conexão e tente novamente.')
+      setLoading(false)
     }
   }
 
@@ -51,7 +70,8 @@ export default function EntrarPage() {
 
         <button
           onClick={handleGoogleLogin}
-          className="flex w-full items-center justify-center gap-3 rounded-xl py-3 font-medium transition-colors"
+          className="flex w-full items-center justify-center gap-3 rounded-xl py-3 font-medium transition-colors disabled:opacity-50"
+          disabled={loading}
           style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}
           onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover-bg)' }}
           onMouseLeave={(event) => { event.currentTarget.style.background = 'var(--surface)' }}
