@@ -126,13 +126,13 @@ export function stabilizeFeedItems(items: FeedItem[], limit = items.length) {
 
   for (const item of ranked) {
     const authorCount = authorCounts.get(item.actor_user_id) ?? 0
-    const groupKey = item.group_id ?? 'public'
-    const groupCount = groupCounts.get(groupKey) ?? 0
+    const groupKey = item.group_id
+    const groupCount = groupKey ? (groupCounts.get(groupKey) ?? 0) : 0
     const previous = picked[picked.length - 1]
 
     const violatesAdjacency = previous?.actor_user_id === item.actor_user_id
     const violatesAuthorCap = authorCount >= 2
-    const violatesGroupCap = groupCount >= 3
+    const violatesGroupCap = groupKey ? groupCount >= 3 : false
 
     if (violatesAdjacency || violatesAuthorCap || violatesGroupCap) {
       deferred.push(item)
@@ -141,21 +141,25 @@ export function stabilizeFeedItems(items: FeedItem[], limit = items.length) {
 
     picked.push(item)
     authorCounts.set(item.actor_user_id, authorCount + 1)
-    groupCounts.set(groupKey, groupCount + 1)
+    if (groupKey) {
+      groupCounts.set(groupKey, groupCount + 1)
+    }
   }
 
   for (const item of deferred) {
     if (picked.length >= limit) break
 
     const authorCount = authorCounts.get(item.actor_user_id) ?? 0
-    const groupKey = item.group_id ?? 'public'
-    const groupCount = groupCounts.get(groupKey) ?? 0
+    const groupKey = item.group_id
+    const groupCount = groupKey ? (groupCounts.get(groupKey) ?? 0) : 0
 
-    if (authorCount >= 3 || groupCount >= 4) continue
+    if (authorCount >= 3 || (groupKey ? groupCount >= 4 : false)) continue
 
     picked.push(item)
     authorCounts.set(item.actor_user_id, authorCount + 1)
-    groupCounts.set(groupKey, groupCount + 1)
+    if (groupKey) {
+      groupCounts.set(groupKey, groupCount + 1)
+    }
   }
 
   return picked.slice(0, limit)

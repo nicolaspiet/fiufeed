@@ -1,21 +1,42 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { signAudioUrls } from '@/lib/audio-url'
 import { WhistleCard } from '@/components/feed/WhistleCard'
 import { stabilizeFeedItems } from '@/lib/feed'
 
-export default async function FeedPage() {
+const PAGE_SIZE = 20
+const CANDIDATE_MULTIPLIER = 5
+
+function parsePageParam(value: string | string[] | undefined) {
+  const rawValue = Array.isArray(value) ? value[0] : value
+  const page = Number.parseInt(rawValue ?? '1', 10)
+  return Number.isFinite(page) && page > 0 ? page : 1
+}
+
+interface FeedPageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function FeedPage({ searchParams }: FeedPageProps) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/entrar')
 
+  const resolvedSearchParams = await searchParams
+  const page = parsePageParam(resolvedSearchParams.page)
+  const visibleCount = page * PAGE_SIZE
+  const candidateLimit = Math.max(visibleCount * CANDIDATE_MULTIPLIER, 120)
+
   const { data: rawFeedItems } = await supabase.rpc('get_feed', {
     p_user_id: user.id,
-    p_limit: 90,
+    p_limit: candidateLimit,
     p_offset: 0,
   })
 
-  const feedItems = stabilizeFeedItems(await signAudioUrls(supabase, rawFeedItems ?? []), 30)
+  const signedItems = await signAudioUrls(supabase, rawFeedItems ?? [])
+  const feedItems = stabilizeFeedItems(signedItems, visibleCount)
+  const hasMore = (rawFeedItems?.length ?? 0) > feedItems.length
   const originalWhistleIds = Array.from(new Set(feedItems.map((item) => item.original_whistle_id)))
 
   const { data: likedRows } = originalWhistleIds.length > 0
@@ -65,6 +86,19 @@ export default async function FeedPage() {
           initialReposted={repostedSet.has(item.original_whistle_id)}
         />
       ))}
+
+      {hasMore ? (
+        <div className="px-4 py-6">
+          <Link
+            href={`/feed?page=${page + 1}`}
+            scroll={false}
+            className="flex w-full items-center justify-center rounded-full px-4 py-3 text-sm font-semibold transition-colors hover:opacity-90"
+            style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          >
+            Carregar mais 20
+          </Link>
+        </div>
+      ) : null}
     </div>
   )
 }
