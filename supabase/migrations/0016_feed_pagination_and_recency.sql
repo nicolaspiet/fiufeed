@@ -52,7 +52,17 @@ as $$
       w.comments_count,
       w.group_id,
       w.created_at,
-      extract(epoch from w.created_at) as score,
+      (
+        2.6
+        + case
+            when w.created_at > now() - interval '6 hours' then 1.6
+            when w.created_at > now() - interval '24 hours' then 1.0
+            when w.created_at > now() - interval '72 hours' then 0.5
+            else 0.0
+          end
+        + ln(1 + greatest(w.likes_count, 0)) * 0.18
+        + ln(1 + greatest(w.comments_count, 0)) * 0.28
+      ) / power(extract(epoch from (now() - w.created_at)) / 3600 + 2, 0.85) as score,
       actor.username,
       actor.display_name,
       actor.avatar_url,
@@ -86,7 +96,17 @@ as $$
       w.comments_count,
       w.group_id,
       w.created_at,
-      extract(epoch from w.created_at) as score,
+      (
+        2.2
+        + case
+            when w.created_at > now() - interval '6 hours' then 1.7
+            when w.created_at > now() - interval '24 hours' then 1.1
+            when w.created_at > now() - interval '72 hours' then 0.55
+            else 0.0
+          end
+        + ln(1 + greatest(w.likes_count, 0)) * 0.18
+        + ln(1 + greatest(w.comments_count, 0)) * 0.28
+      ) / power(extract(epoch from (now() - w.created_at)) / 3600 + 2, 0.85) as score,
       actor.username,
       actor.display_name,
       actor.avatar_url,
@@ -120,7 +140,17 @@ as $$
       original.comments_count,
       r.group_id,
       r.created_at,
-      extract(epoch from r.created_at) as score,
+      (
+        1.8
+        + case
+            when r.created_at > now() - interval '6 hours' then 1.1
+            when r.created_at > now() - interval '24 hours' then 0.7
+            when r.created_at > now() - interval '72 hours' then 0.35
+            else 0.0
+          end
+        + ln(1 + greatest(original.likes_count, 0)) * 0.12
+        + ln(1 + greatest(original.comments_count, 0)) * 0.2
+      ) / power(extract(epoch from (now() - r.created_at)) / 3600 + 2, 0.9) as score,
       actor.username,
       actor.display_name,
       actor.avatar_url,
@@ -143,18 +173,71 @@ as $$
         select 1 from competition_whistles cw where cw.whistle_id = original.id
       )
   ),
+  public_whistles as (
+    select
+      'whistle'::text as item_type,
+      w.id as item_id,
+      w.id as original_whistle_id,
+      w.public_id as original_public_id,
+      w.user_id as actor_user_id,
+      w.audio_url,
+      w.duration_s,
+      w.caption,
+      w.likes_count,
+      w.comments_count,
+      w.group_id,
+      w.created_at,
+      (
+        1.15
+        + case
+            when w.created_at > now() - interval '6 hours' then 1.9
+            when w.created_at > now() - interval '24 hours' then 1.2
+            when w.created_at > now() - interval '72 hours' then 0.6
+            else 0.0
+          end
+        + ln(1 + greatest(w.likes_count, 0)) * 0.1
+        + ln(1 + greatest(w.comments_count, 0)) * 0.16
+      ) / power(extract(epoch from (now() - w.created_at)) / 3600 + 2, 0.88) as score,
+      actor.username,
+      actor.display_name,
+      actor.avatar_url,
+      equipped_badge.label as equipped_badge_label,
+      equipped_title.title as equipped_title,
+      w.user_id as original_user_id,
+      actor.username as original_username,
+      actor.display_name as original_display_name,
+      actor.avatar_url as original_avatar_url
+    from public.whistles w
+    join public.profiles actor on actor.id = w.user_id
+    left join public.user_badges equipped_badge on equipped_badge.id = actor.equipped_badge_id
+    left join public.user_titles equipped_title on equipped_title.id = actor.equipped_title_id
+    where w.group_id is null
+      and w.user_id <> p_user_id
+      and not exists (
+        select 1
+        from follower_ids followed
+        where followed.following_id = w.user_id
+      )
+      and not exists (
+        select 1 from competition_whistles cw where cw.whistle_id = w.id
+      )
+    order by w.created_at desc
+    limit greatest(p_limit * 6, 180)
+  ),
   combined as (
     select * from own_whistles
     union all
     select * from followed_whistles
     union all
     select * from followed_reposts
+    union all
+    select * from public_whistles
   ),
   deduped as (
     select *,
       row_number() over (
         partition by original_whistle_id
-        order by created_at desc, case when item_type = 'whistle' then 0 else 1 end
+        order by case when item_type = 'whistle' then 0 else 1 end, score desc, created_at desc
       ) as row_num
     from combined
   )
@@ -183,6 +266,6 @@ as $$
     original_avatar_url
   from deduped
   where row_num = 1
-  order by created_at desc
+  order by score desc, created_at desc
   limit p_limit offset p_offset;
 $$;

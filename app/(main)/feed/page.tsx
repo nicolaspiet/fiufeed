@@ -3,8 +3,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { signAudioUrls } from '@/lib/audio-url'
 import { WhistleCard } from '@/components/feed/WhistleCard'
+import { stabilizeFeedItems } from '@/lib/feed'
 
 const PAGE_SIZE = 20
+const CANDIDATE_MULTIPLIER = 5
 
 function parsePageParam(value: string | string[] | undefined) {
   const rawValue = Array.isArray(value) ? value[0] : value
@@ -24,15 +26,17 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   const resolvedSearchParams = await searchParams
   const page = parsePageParam(resolvedSearchParams.page)
   const visibleCount = page * PAGE_SIZE
+  const candidateLimit = Math.max(visibleCount * CANDIDATE_MULTIPLIER, 120)
 
   const { data: rawFeedItems } = await supabase.rpc('get_feed', {
     p_user_id: user.id,
-    p_limit: visibleCount + 1,
+    p_limit: candidateLimit,
     p_offset: 0,
   })
 
-  const hasMore = (rawFeedItems?.length ?? 0) > visibleCount
-  const feedItems = await signAudioUrls(supabase, (rawFeedItems ?? []).slice(0, visibleCount))
+  const signedItems = await signAudioUrls(supabase, rawFeedItems ?? [])
+  const feedItems = stabilizeFeedItems(signedItems, visibleCount)
+  const hasMore = (rawFeedItems?.length ?? 0) > feedItems.length
   const originalWhistleIds = Array.from(new Set(feedItems.map((item) => item.original_whistle_id)))
 
   const { data: likedRows } = originalWhistleIds.length > 0
